@@ -98,6 +98,8 @@ const handlers = {
     ui.log(message.text, message.kind === "dropped" ? "dropped" : "said");
   },
 
+  level: (message) => ui.setLevel(message),
+
   timing: (message) => ui.setTiming(message),
 
   log: (message) => ui.log(message.message, message.level === "info" ? "" : message.level),
@@ -111,10 +113,15 @@ function describeApplied(message, result) {
 
 /* --- user actions ---------------------------------------------------------------- */
 
+/** Send a user-initiated command, telling them if it could not be delivered. */
+function command(name) {
+  if (!link.send({ type: "command", name })) {
+    ui.log("Нет связи со службой — команда не отправлена. Запущен ли scripts/run.ps1?", "error");
+  }
+}
+
 function wireControls() {
-  ui.el.toggle.addEventListener("click", () => {
-    link.send({ type: "command", name: "toggle" });
-  });
+  ui.el.toggle.addEventListener("click", () => command("toggle"));
 
   ui.el.undo.addEventListener("click", async () => {
     const result = await undo(journal, 1, { withStyle: caps.withStyle });
@@ -126,7 +133,10 @@ function wireControls() {
   ui.el.send.addEventListener("click", () => {
     const text = ui.el.dictate.value.trim();
     if (!text) return;
-    link.send({ type: "dictate", text });
+    if (!link.send({ type: "dictate", text })) {
+      ui.log("Нет связи со службой — реплика не отправлена.", "error");
+      return;
+    }
     ui.el.dictate.value = "";
   });
 
@@ -172,6 +182,7 @@ Office.onReady(async (info) => {
     if (!connected) return;
     link.send({
       type: "hello",
+      client: globalThis.__autowriterClient || "word",
       wordApi,
       platform: String(Office.context.platform ?? ""),
       version: String(Office.context.diagnostics?.version ?? ""),

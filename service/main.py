@@ -86,7 +86,7 @@ def create_app(cfg: config_module.Config | None = None) -> FastAPI:
                 if not isinstance(message, dict):
                     continue
                 try:
-                    await bridge.handle(message)
+                    await bridge.handle(socket, message)
                 except Exception:
                     log.exception("error handling pane message %s", message.get("type"))
         except WebSocketDisconnect:

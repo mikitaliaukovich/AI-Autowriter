@@ -24,6 +24,10 @@
         <span class="mic-icon" aria-hidden="true"></span>
         <span id="toggle-label">Начать диктовку</span>
       </button>
+      <div class="meter" id="meter" title="Уровень микрофона">
+        <div class="meter-fill" id="meter-fill"></div>
+        <span class="meter-label" id="meter-label">микрофон выключен</span>
+      </div>
       <p class="hint">
         <kbd id="hotkey">—</kbd> работает и когда фокус в документе
       </p>
@@ -33,6 +37,7 @@
       <div class="status-row"><span>Распознавание</span><b id="s-asr">—</b></div>
       <div class="status-row"><span>Модель</span><b id="s-llm">—</b></div>
       <div class="status-row"><span>Микрофон</span><b id="s-mic">—</b></div>
+      <div class="status-row" id="row-channel" hidden><span>Канал</span><b id="s-channel">—</b></div>
       <div class="status-row" id="row-timing" hidden><span>Задержка</span><b id="s-timing">—</b></div>
     </section>
 

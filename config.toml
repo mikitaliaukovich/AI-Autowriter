@@ -15,6 +15,13 @@ device = "Analogue 1 + 2 (Focusrite USB Audio)"
 sample_rate = 16000
 frame_ms = 32               # 512 samples @ 16 kHz — the frame size Silero VAD expects
 ffmpeg = "ffmpeg"           # path to the binary, if not on PATH
+# Which channel carries the microphone: "mix" | "left" | "right" | a channel number.
+# Interfaces expose two channels even with one mic plugged in, and "mix" averages the
+# live channel with a silent one -- a 6 dB loss, often enough to fall under the VAD
+# threshold and look like the system is deaf. Run `python scripts/check_audio.py` to
+# measure your input and get a recommendation.
+channel = "right"   # measured: the mic is 36 dB above the left channel here
+gain_db = 0.0               # applied after channel selection; try 6-12 for a quiet input
 
 [vad]
 backend = "silero"          # "silero" | "energy"

@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import math
 import time
 from typing import Any
 
@@ -37,6 +38,16 @@ log = logging.getLogger(__name__)
 # How many utterances may pile up before the oldest is dropped. Beyond this the user has
 # out-talked the machine by so much that stale text is worse than no text.
 QUEUE_LIMIT = 8
+
+# Level meter cadence: every 5 frames is about 160 ms, smooth enough to read and far
+# below the rate at which a WebSocket message costs anything.
+LEVEL_EVERY_N_FRAMES = 5
+
+SILENT_RMS = 1e-6
+
+
+def _to_dbfs(rms: float) -> float:
+    return 20 * math.log10(rms) if rms > SILENT_RMS else -100.0
 
 
 class Orchestrator:
@@ -121,6 +132,8 @@ class Orchestrator:
             "queued": self._queue.qsize(),
             "hotkey": self._hotkey_label,
             "device": self.cfg.audio.device,
+            "channel": self.cfg.audio.channel,
+            "gainDb": self.cfg.audio.gain_db,
             "llmModel": self.cfg.llm.model,
             "llmStatus": self._llm_status,
             "contextBefore": self.cfg.context.before,
@@ -130,10 +143,11 @@ class Orchestrator:
         }
 
     async def _push_state(self) -> None:
-        await self.bridge.try_send(protocol.msg_state(**self.state()))
+        await self.bridge.broadcast(protocol.msg_state(**self.state()))
 
     async def _log(self, message: str, level: str = "info") -> None:
-        await self.bridge.try_send(protocol.msg_log(message, level))  # type: ignore[arg-type]
+        log.info("pane[%s]: %s", level, message)
+        await self.bridge.broadcast(protocol.msg_log(message, level))  # type: ignore[arg-type]
 
     async def on_pane_attached(self) -> None:
         await self._push_state()
@@ -195,12 +209,44 @@ class Orchestrator:
         await self._push_state()
 
     async def _audio_loop(self) -> None:
+        """Read frames, endpoint them, and keep the pane's level meter fed.
+
+        The meter exists because a silent microphone is otherwise indistinguishable from
+        a broken pipeline: nothing happens either way. With it, the failure is visible
+        the moment the user starts talking.
+        """
         assert self._endpointer is not None
+        frames_since_push = 0
+        peak = 0.0
+        speech_seen = False
+        heard_anything = False
+
         try:
             async for frame in self._mic.frames():
                 utterance = self._endpointer.push(frame)
+
+                peak = max(peak, self._endpointer.last_rms)
+                speech_seen = speech_seen or self._endpointer.in_speech
+                frames_since_push += 1
+                if frames_since_push >= LEVEL_EVERY_N_FRAMES:
+                    await self.bridge.broadcast(
+                        protocol.msg_level(
+                            _to_dbfs(self._endpointer.last_rms),
+                            self._endpointer.in_speech,
+                            _to_dbfs(peak),
+                        )
+                    )
+                    frames_since_push = 0
+                    peak = 0.0
+
                 if utterance:
+                    heard_anything = True
+                    seconds = len(utterance) / 2 / self.cfg.audio.sample_rate
+                    log.info("utterance: %.1f s", seconds)
                     await self._enqueue(("audio", utterance))
+
+            if not heard_anything and not speech_seen:
+                log.warning("capture ended without detecting any speech")
         except asyncio.CancelledError:
             raise
         except Exception as exc:

@@ -25,10 +25,21 @@ class ServerConfig:
 
 @dataclass(frozen=True)
 class AudioConfig:
+    """Capture settings.
+
+    ``channel`` matters more than it looks. Audio interfaces present two channels even
+    when a single microphone is plugged into one of them, and the default "mix"
+    downmixes both -- averaging a live channel with a silent one costs 6 dB, which is
+    enough to drop the signal under the VAD threshold and make the system look deaf.
+    Run ``scripts/check_audio.py`` to see the levels and get a recommendation.
+    """
+
     device: str = ""
     sample_rate: int = 16000
     frame_ms: int = 32
     ffmpeg: str = "ffmpeg"
+    channel: str = "mix"        # "mix" | "left" | "right" | "0".."7"
+    gain_db: float = 0.0
 
     @property
     def frame_samples(self) -> int:

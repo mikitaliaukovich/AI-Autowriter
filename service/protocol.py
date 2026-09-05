@@ -133,6 +133,11 @@ def msg_transcript(text: str, final: bool = True, kind: str = "dictation") -> di
     return {"type": "transcript", "text": text, "final": final, "kind": kind}
 
 
+def msg_level(dbfs: float, speech: bool, peak_dbfs: float) -> dict[str, Any]:
+    """Live microphone level, so a silent input is visible rather than mysterious."""
+    return {"type": "level", "dbfs": dbfs, "speech": speech, "peak": peak_dbfs}
+
+
 def msg_timing(**stages: float) -> dict[str, Any]:
     return {"type": "timing", **stages}
 

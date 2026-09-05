@@ -22,6 +22,21 @@ log = logging.getLogger(__name__)
 
 _DEVICE_RE = re.compile(r'"([^"]+)"\s*\(audio\)')
 
+_CHANNEL_NAMES = {"left": 0, "l": 0, "right": 1, "r": 1}
+
+
+def channel_index(channel: str) -> int | None:
+    """Resolve a channel setting to an index, or None for the default downmix."""
+    key = (channel or "mix").strip().lower()
+    if key in ("", "mix", "both", "auto"):
+        return None
+    if key in _CHANNEL_NAMES:
+        return _CHANNEL_NAMES[key]
+    if key.isdigit():
+        return int(key)
+    log.warning("unknown audio.channel %r; falling back to a downmix", channel)
+    return None
+
 
 def list_devices(ffmpeg: str = "ffmpeg") -> list[str]:
     """Enumerate DirectShow audio inputs.
@@ -55,8 +70,20 @@ class MicStream:
     def running(self) -> bool:
         return self._proc is not None and self._proc.returncode is None
 
+    def filter_chain(self) -> str:
+        """The -af value implementing the configured channel choice and gain."""
+        stages: list[str] = []
+        index = channel_index(self.cfg.channel)
+        if index is not None:
+            # Take one channel outright rather than downmixing: averaging a live channel
+            # with a silent one halves the amplitude.
+            stages.append(f"pan=mono|c0=c{index}")
+        if self.cfg.gain_db:
+            stages.append(f"volume={self.cfg.gain_db}dB")
+        return ",".join(stages)
+
     def _args(self) -> list[str]:
-        return [
+        args = [
             self.cfg.ffmpeg,
             "-hide_banner",
             "-loglevel", "error",
@@ -67,10 +94,12 @@ class MicStream:
             "-audio_buffer_size", "50",
             "-i", f"audio={self.cfg.device}",
             "-ar", str(self.cfg.sample_rate),
-            "-ac", "1",
-            "-f", "s16le",
-            "-",
         ]
+        chain = self.filter_chain()
+        if chain:
+            args += ["-af", chain]
+        args += ["-ac", "1", "-f", "s16le", "-"]
+        return args
 
     async def start(self) -> None:
         if self.running:

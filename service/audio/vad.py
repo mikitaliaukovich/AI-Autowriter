@@ -27,6 +27,12 @@ SILERO_FILENAME = "silero_vad.onnx"
 # Silero v5 is trained on exactly this window at 16 kHz and silently misbehaves on others.
 SILERO_WINDOW = 512
 
+# The model also expects the previous chunk's last 64 samples to be prepended, so the
+# tensor it actually receives is 576 wide. This is easy to miss — omitting the context
+# does not fail, it just makes the model return near-zero for everything, which looks
+# exactly like a microphone that is not picking anything up.
+SILERO_CONTEXT = 64
+
 
 def ensure_model(models_dir: pathlib.Path) -> pathlib.Path:
     """Download the Silero VAD model once. Everything else runs offline."""
@@ -59,10 +65,13 @@ class SileroVad:
         )
         self._input_names = {i.name for i in self._session.get_inputs()}
         self.sample_rate = sample_rate
+        self._context_size = SILERO_CONTEXT if sample_rate == 16000 else SILERO_CONTEXT // 2
         self._state = np.zeros((2, 1, 128), dtype=np.float32)
+        self._context = np.zeros((1, self._context_size), dtype=np.float32)
 
     def reset(self) -> None:
         self._state = np.zeros((2, 1, 128), dtype=np.float32)
+        self._context = np.zeros((1, self._context_size), dtype=np.float32)
 
     def probability(self, samples: np.ndarray) -> float:
         """Speech probability for one 512-sample float32 window in [-1, 1]."""
@@ -72,8 +81,13 @@ class SileroVad:
             else:
                 samples = np.pad(samples, (0, SILERO_WINDOW - samples.shape[0]))
 
+        window = samples.reshape(1, -1).astype(np.float32)
+        # Carry the tail of the previous chunk in front of this one; the model is
+        # trained that way and returns near-zero for everything without it.
+        window = np.concatenate([self._context, window], axis=1)
+
         feeds = {
-            "input": samples.reshape(1, -1).astype(np.float32),
+            "input": window,
             "sr": np.array(self.sample_rate, dtype=np.int64),
         }
         if "state" in self._input_names:
@@ -81,6 +95,7 @@ class SileroVad:
         outputs = self._session.run(None, feeds)
         if len(outputs) > 1:
             self._state = outputs[1]
+        self._context = window[:, -self._context_size:]
         return float(np.asarray(outputs[0]).ravel()[0])
 
 
@@ -131,6 +146,9 @@ class Endpointer:
         self._speech_ms = 0
         self._silence_ms = 0
         self._in_speech = False
+        # Exposed for the pane's level meter: computed here anyway, so metering is free.
+        self.last_rms = 0.0
+        self.last_probability = 0.0
 
     def reset(self) -> None:
         self.vad.reset()
@@ -147,7 +165,9 @@ class Endpointer:
     def push(self, frame: bytes) -> bytes | None:
         """Feed one frame. Returns a complete utterance's PCM when one ends."""
         samples = np.frombuffer(frame, dtype=np.int16).astype(np.float32) / 32768.0
-        speech = self.vad.probability(samples) >= self.cfg.threshold
+        self.last_rms = float(np.sqrt(np.mean(np.square(samples))))
+        self.last_probability = self.vad.probability(samples)
+        speech = self.last_probability >= self.cfg.threshold
 
         if not self._in_speech:
             self._preroll.append(frame)

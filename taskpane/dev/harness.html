@@ -25,6 +25,9 @@
   <div id="summary">Running…</div>
   <div id="output"></div>
 
+  <!-- Never outrank the real add-in for the service's attention. A static import is
+       hoisted above every statement in its module, so this must be set from outside. -->
+  <script>globalThis.__autowriterClient = "preview";</script>
   <script type="module">
     import { runTests } from "./tests.js";
 

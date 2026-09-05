@@ -17,9 +17,14 @@ export class Ui {
       toggle: $("toggle"),
       toggleLabel: $("toggle-label"),
       hotkey: $("hotkey"),
+      meter: $("meter"),
+      meterFill: $("meter-fill"),
+      meterLabel: $("meter-label"),
       asr: $("s-asr"),
       llm: $("s-llm"),
       mic: $("s-mic"),
+      channelRow: $("row-channel"),
+      channel: $("s-channel"),
       timingRow: $("row-timing"),
       timing: $("s-timing"),
       context: $("context"),
@@ -74,7 +79,18 @@ export class Ui {
     this.el.llm.textContent = state.llmStatus || state.llmModel || "—";
     this.el.llm.classList.toggle("is-bad", llmBad);
 
+    // The device name is long and gets ellipsised, so the channel — the setting that
+    // actually matters when audio is not getting through — gets its own row.
     this.el.mic.textContent = state.device || "—";
+    this.el.mic.title = state.device || "";
+    const channel = state.channel || "mix";
+    const gain = Number(state.gainDb) || 0;
+    const interesting = channel !== "mix" || gain !== 0;
+    this.el.channelRow.hidden = !interesting;
+    if (interesting) {
+      this.el.channel.textContent = gain ? `${channel} · ${gain > 0 ? "+" : ""}${gain} дБ` : channel;
+    }
+    if (!this.listening) this.clearLevel();
 
     if (Number.isFinite(state.contextBefore) && document.activeElement !== this.el.before) {
       this.el.before.value = state.contextBefore;
@@ -82,6 +98,27 @@ export class Ui {
     if (Number.isFinite(state.contextAfter) && document.activeElement !== this.el.after) {
       this.el.after.value = state.contextAfter;
     }
+  }
+
+  /**
+   * Show the live microphone level.
+   * @param {{dbfs: number, speech: boolean, peak: number}} level
+   */
+  setLevel(level) {
+    const db = Number.isFinite(level.peak) ? level.peak : -100;
+    const percent = Math.max(0, Math.min(100, ((db + 60) / 60) * 100));
+    this.el.meterFill.style.width = `${percent}%`;
+    this.el.meter.classList.toggle("is-speech", Boolean(level.speech));
+    this.el.meter.classList.toggle("is-hot", db > -3);
+    this.el.meterLabel.textContent =
+      db <= -60 ? "тишина" : `${db.toFixed(0)} dBFS${level.speech ? " · речь" : ""}`;
+    this._levelSeenAt = Date.now();
+  }
+
+  clearLevel(message = "микрофон выключен") {
+    this.el.meterFill.style.width = "0%";
+    this.el.meter.classList.remove("is-speech", "is-hot");
+    this.el.meterLabel.textContent = message;
   }
 
   setTiming(timing) {
