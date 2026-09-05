@@ -1,0 +1,94 @@
+01:28:36 INFO    autowriter  Task pane:  https://localhost:3000/taskpane.html
+01:28:36 INFO    service.audio.hotkey  hotkey registered: Ctrl+Alt+G
+01:28:36 INFO    service.llm.ollama_client  LLM warm: qwen3:8b
+01:28:36 INFO    service.asr.faster_whisper_backend  loading Whisper 'large-v3-turbo' (first run downloads the model)
+01:28:39 INFO    service.asr.faster_whisper_backend  ASR ready: large-v3-turbo (cpu, int8)
+01:28:55 ERROR   asyncio  Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "C:\Users\mikit\AppData\Local\Programs\Python\Python312\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "C:\Users\mikit\AppData\Local\Programs\Python\Python312\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+01:28:55 INFO    service.bridge  task pane connected: PC 16.0.0
+01:29:05 INFO    service.pipeline.orchestrator  [dictation] Диалог Почему ты это сделал Мэри сказала гневно точка Потому что я тот кто разрушит этот мир
+01:29:11 INFO    service.pipeline.orchestrator  [dictation] э-э ну она отвернулась нет не отвернулась а закрыла глаза и медленно выдохнула точка
+01:29:17 INFO    service.pipeline.orchestrator  [command] Ассистент перепиши последнее предложение Она молчала целую вечность
+01:29:23 INFO    service.pipeline.orchestrator  [control] Отмени последнее
+01:31:22 ERROR   asyncio  Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "C:\Users\mikit\AppData\Local\Programs\Python\Python312\Lib\asyncio\events.py", line 88, in _run
+    self._context.run(self._callback, *self._args)
+  File "C:\Users\mikit\AppData\Local\Programs\Python\Python312\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+01:31:25 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:31:26 INFO    service.bridge  task pane connected: PC 16.0.0
+01:31:27 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:31:28 INFO    service.bridge  task pane connected: PC 16.0.0
+01:31:29 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:31:30 INFO    service.bridge  task pane connected: PC 16.0.0
+01:31:31 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:31:32 INFO    service.bridge  task pane connected: PC 16.0.0
+01:31:33 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:31:34 INFO    service.bridge  task pane connected: PC 16.0.0
+01:31:35 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:31:36 INFO    service.bridge  task pane connected: PC 16.0.0
+01:31:37 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:31:38 INFO    service.bridge  task pane connected: PC 16.0.0
+01:31:39 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:31:40 INFO    service.bridge  task pane connected: PC 16.0.0
+01:31:41 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:31:42 INFO    service.bridge  task pane connected: PC 16.0.0
+01:31:43 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:31:44 INFO    service.bridge  task pane connected: PC 16.0.0
+01:31:45 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:31:46 INFO    service.bridge  task pane connected: PC 16.0.0
+01:31:47 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:31:48 INFO    service.bridge  task pane connected: PC 16.0.0
+01:31:49 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:31:50 INFO    service.bridge  task pane connected: PC 16.0.0
+01:31:51 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:31:52 INFO    service.bridge  task pane connected: PC 16.0.0
+01:31:53 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:31:54 INFO    service.bridge  task pane connected: PC 16.0.0
+01:31:55 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:31:56 INFO    service.bridge  task pane connected: PC 16.0.0
+01:31:57 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:31:58 INFO    service.bridge  task pane connected: PC 16.0.0
+01:31:59 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:32:00 INFO    service.bridge  task pane connected: PC 16.0.0
+01:32:01 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:32:02 INFO    service.bridge  task pane connected: PC 16.0.0
+01:32:03 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:32:04 INFO    service.bridge  task pane connected: PC 16.0.0
+01:32:05 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:32:06 INFO    service.bridge  task pane connected: PC 16.0.0
+01:32:07 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:32:08 INFO    service.bridge  task pane connected: PC 16.0.0
+01:32:09 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:32:10 INFO    service.bridge  task pane connected: PC 16.0.0
+01:32:11 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:32:12 INFO    service.bridge  task pane connected: PC 16.0.0
+01:32:13 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:32:14 INFO    service.bridge  task pane connected: PC 16.0.0
+01:32:15 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:32:16 INFO    service.bridge  task pane connected: PC 16.0.0
+01:32:17 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:32:18 INFO    service.bridge  task pane connected: PC 16.0.0
+01:32:19 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:32:20 INFO    service.bridge  task pane connected: PC 16.0.0
+01:32:21 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:32:22 INFO    service.bridge  task pane connected: PC 16.0.0
+01:32:23 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:32:24 INFO    service.bridge  task pane connected: PC 16.0.0
+01:32:25 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:32:26 INFO    service.bridge  task pane connected: PC 16.0.0
+01:32:27 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:32:28 INFO    service.bridge  task pane connected: PC 16.0.0
+01:32:29 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:32:30 INFO    service.bridge  task pane connected: PC 16.0.0
+01:32:31 INFO    service.bridge  task pane connected: PC 16.0.17932.20910
+01:32:32 INFO    service.bridge  task pane connected: PC 16.0.0

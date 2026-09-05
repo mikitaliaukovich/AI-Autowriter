@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Autowriter — task pane tests</title>
+  <style>
+    body { font: 13px/1.5 "Segoe UI", system-ui, sans-serif; margin: 24px; max-width: 900px; }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    .sub { color: #666; margin: 0 0 20px; }
+    #summary { padding: 10px 14px; border-radius: 8px; font-weight: 600; margin-bottom: 16px; }
+    .pass { background: #e6f5ec; color: #157a45; }
+    .fail { background: #fdeceb; color: #b3261e; }
+    h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #666; margin: 18px 0 6px; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { padding: 4px 8px; border-left: 3px solid transparent; }
+    li.ok { border-color: #157a45; }
+    li.bad { border-color: #b3261e; background: #fff5f5; }
+    pre { margin: 4px 0 0 14px; color: #b3261e; font-size: 12px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Task pane tests</h1>
+  <p class="sub">Runs <code>context.js</code>, <code>apply.js</code> and <code>journal.js</code> against an in-memory Word mock.</p>
+  <div id="summary">Running…</div>
+  <div id="output"></div>
+
+  <script type="module">
+    import { runTests } from "./tests.js";
+
+    const summary = document.getElementById("summary");
+    const output = document.getElementById("output");
+
+    try {
+      const results = await runTests();
+      const failed = results.filter((r) => !r.ok);
+      summary.className = failed.length ? "fail" : "pass";
+      summary.textContent = failed.length
+        ? `${failed.length} of ${results.length} tests failed`
+        : `All ${results.length} tests passed`;
+
+      let suite = null;
+      for (const result of results) {
+        if (result.suite !== suite) {
+          suite = result.suite;
+          const heading = document.createElement("h2");
+          heading.textContent = suite;
+          output.append(heading, document.createElement("ul"));
+        }
+        const item = document.createElement("li");
+        item.className = result.ok ? "ok" : "bad";
+        item.textContent = `${result.ok ? "✓" : "✗"} ${result.name}`;
+        if (!result.ok) {
+          const detail = document.createElement("pre");
+          detail.textContent = result.error;
+          item.append(detail);
+        }
+        output.lastElementChild.append(item);
+      }
+      document.title = failed.length ? `FAIL (${failed.length})` : "PASS";
+      globalThis.__results = results;
+    } catch (error) {
+      summary.className = "fail";
+      summary.textContent = `Harness crashed: ${error.message}`;
+      const detail = document.createElement("pre");
+      detail.textContent = error.stack;
+      output.append(detail);
+      document.title = "CRASH";
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Autowriter</title>
+  <link rel="stylesheet" href="/taskpane.css" />
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+</head>
+<body>
+  <div id="boot" class="boot">
+    <div class="spinner" aria-hidden="true"></div>
+    <p>Подключение к Word…</p>
+  </div>
+
+  <main id="app" hidden>
+    <header class="bar">
+      <span class="brand">Стенографист</span>
+      <span id="link" class="pill pill--off" title="Связь с локальной службой">не подключено</span>
+    </header>
+
+    <section class="mic">
+      <button id="toggle" class="mic-button" type="button" aria-pressed="false">
+        <span class="mic-icon" aria-hidden="true"></span>
+        <span id="toggle-label">Начать диктовку</span>
+      </button>
+      <p class="hint">
+        <kbd id="hotkey">—</kbd> работает и когда фокус в документе
+      </p>
+    </section>
+
+    <section class="status" aria-label="Состояние">
+      <div class="status-row"><span>Распознавание</span><b id="s-asr">—</b></div>
+      <div class="status-row"><span>Модель</span><b id="s-llm">—</b></div>
+      <div class="status-row"><span>Микрофон</span><b id="s-mic">—</b></div>
+      <div class="status-row" id="row-timing" hidden><span>Задержка</span><b id="s-timing">—</b></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Окно контекста</h2>
+        <div class="window-size">
+          <label>назад <input id="ctx-before" type="number" min="0" max="20" step="1" /></label>
+          <label>вперёд <input id="ctx-after" type="number" min="0" max="20" step="1" /></label>
+        </div>
+      </div>
+      <p class="panel-note">Ассистент видит только эти абзацы. Поставьте курсор в другое место — окно переедет туда.</p>
+      <div id="context" class="context" aria-live="polite"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Журнал</h2>
+        <button id="undo" class="link-button" type="button">Отменить правку</button>
+      </div>
+      <ul id="log" class="log" aria-live="polite"></ul>
+    </section>
+
+    <details class="panel panel--fold">
+      <summary>Ввод текстом (для проверки без микрофона)</summary>
+      <textarea id="dictate" rows="3" placeholder="Диалог Почему ты это сделал Мэри сказала гневно точка Потому что я тот кто разрушит этот мир"></textarea>
+      <button id="send" class="secondary-button" type="button">Обработать как реплику</button>
+    </details>
+
+    <div id="fatal" class="fatal" hidden></div>
+  </main>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

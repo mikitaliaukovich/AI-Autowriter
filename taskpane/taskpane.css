@@ -1,0 +1,230 @@
+/* Task panes are narrow (often 320px) and dockable wider, so everything is fluid.
+   Colours follow the host's light/dark theme. */
+
+:root {
+  --bg: #ffffff;
+  --bg-sunken: #f6f6f8;
+  --bg-raised: #ffffff;
+  --border: #e3e3e8;
+  --text: #1a1a1e;
+  --text-dim: #6a6a76;
+  --accent: #4f46e5;
+  --accent-soft: #eeecff;
+  --ok: #157a45;
+  --ok-soft: #e6f5ec;
+  --warn: #8a5a00;
+  --warn-soft: #fdf3e0;
+  --err: #b3261e;
+  --err-soft: #fdeceb;
+  --radius: 8px;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1b1f;
+    --bg-sunken: #232329;
+    --bg-raised: #26262c;
+    --border: #37373f;
+    --text: #ececf1;
+    --text-dim: #9a9aa8;
+    --accent: #8b83ff;
+    --accent-soft: #2c2a4a;
+    --ok: #6ee7a8;
+    --ok-soft: #1d3a2b;
+    --warn: #f0c070;
+    --warn-soft: #3a2f18;
+    --err: #ff8a80;
+    --err-soft: #3d2220;
+  }
+}
+
+* { box-sizing: border-box; }
+
+/* An author-set `display` beats the `hidden` attribute's UA rule, and several elements
+   here are flex containers, so `hidden` must be made to win explicitly. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  font: 13px/1.45 "Segoe UI", system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* --- boot ------------------------------------------------------------------ */
+
+.boot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 16px;
+  color: var(--text-dim);
+}
+
+.spinner {
+  width: 22px; height: 22px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- layout ---------------------------------------------------------------- */
+
+main { padding: 10px 12px 24px; display: flex; flex-direction: column; gap: 12px; }
+
+.bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+
+.brand { font-weight: 600; letter-spacing: 0.2px; }
+
+.pill {
+  font-size: 11px; padding: 2px 8px; border-radius: 999px;
+  background: var(--bg-sunken); color: var(--text-dim); white-space: nowrap;
+}
+.pill--on  { background: var(--ok-soft);  color: var(--ok); }
+.pill--off { background: var(--err-soft); color: var(--err); }
+
+/* --- microphone ------------------------------------------------------------ */
+
+.mic { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+
+.mic-button {
+  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 16px;
+  font: inherit; font-weight: 600; font-size: 14px;
+  color: #fff; background: var(--accent);
+  border: none; border-radius: var(--radius); cursor: pointer;
+  transition: background 0.15s, transform 0.05s;
+}
+.mic-button:hover  { filter: brightness(1.07); }
+.mic-button:active { transform: scale(0.99); }
+.mic-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.mic-button.is-live { background: var(--err); }
+.mic-button.is-live .mic-icon { animation: pulse 1.4s ease-in-out infinite; }
+
+.mic-icon {
+  width: 10px; height: 10px; border-radius: 50%; background: currentColor;
+  box-shadow: 0 0 0 0 rgba(255,255,255,0.5);
+}
+
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0.55); }
+  70%  { box-shadow: 0 0 0 7px rgba(255,255,255,0); }
+  100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+}
+
+.hint { margin: 0; font-size: 11px; color: var(--text-dim); text-align: center; }
+
+kbd {
+  font: 11px var(--mono);
+  background: var(--bg-sunken); border: 1px solid var(--border);
+  border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px;
+}
+
+/* --- status ---------------------------------------------------------------- */
+
+.status {
+  background: var(--bg-sunken); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+
+.status-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; }
+.status-row span { color: var(--text-dim); flex: none; }
+.status-row b {
+  font-weight: 500; text-align: right;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.status-row b.is-bad { color: var(--err); }
+
+/* --- panels ---------------------------------------------------------------- */
+
+.panel {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg-raised); padding: 10px;
+}
+
+.panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.panel h2 { margin: 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-dim); }
+.panel-note { margin: 4px 0 8px; font-size: 11px; color: var(--text-dim); }
+
+.window-size { display: flex; gap: 8px; font-size: 11px; color: var(--text-dim); }
+.window-size label { display: flex; align-items: center; gap: 3px; }
+.window-size input {
+  width: 40px; padding: 1px 4px; font: inherit;
+  color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+}
+
+.link-button {
+  border: none; background: none; padding: 0;
+  font: inherit; font-size: 11px; color: var(--accent); cursor: pointer;
+}
+.link-button:hover { text-decoration: underline; }
+.link-button:disabled { color: var(--text-dim); cursor: not-allowed; text-decoration: none; }
+
+.secondary-button {
+  margin-top: 6px; padding: 6px 10px; font: inherit; font-size: 12px;
+  color: var(--text); background: var(--bg-sunken);
+  border: 1px solid var(--border); border-radius: 6px; cursor: pointer;
+}
+.secondary-button:hover { background: var(--accent-soft); }
+
+/* --- context window -------------------------------------------------------- */
+
+.context {
+  max-height: 190px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 5px;
+  font-size: 12px;
+}
+
+.ctx-line {
+  display: grid; grid-template-columns: 34px 1fr; gap: 6px;
+  padding: 3px 4px; border-radius: 5px;
+}
+.ctx-line--anchor { background: var(--accent-soft); }
+.ctx-id { font: 10px var(--mono); color: var(--text-dim); padding-top: 2px; }
+.ctx-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ctx-text .empty { color: var(--text-dim); font-style: italic; }
+.ctx-caret { display: inline-block; width: 2px; height: 1em; vertical-align: -2px; background: var(--accent); animation: blink 1.1s step-end infinite; }
+.ctx-style { font: 10px var(--mono); color: var(--accent); }
+
+@keyframes blink { 50% { opacity: 0; } }
+
+.context:empty::after {
+  content: "Поставьте курсор в документ";
+  color: var(--text-dim); font-style: italic;
+}
+
+/* --- log ------------------------------------------------------------------- */
+
+.log { list-style: none; margin: 6px 0 0; padding: 0; max-height: 180px; overflow-y: auto; display: flex; flex-direction: column-reverse; gap: 4px; }
+
+.log li { padding: 4px 6px; border-radius: 5px; background: var(--bg-sunken); font-size: 12px; overflow-wrap: anywhere; }
+.log .t { font: 10px var(--mono); color: var(--text-dim); margin-right: 6px; }
+.log li.said   { background: var(--accent-soft); }
+.log li.warn   { background: var(--warn-soft); color: var(--warn); }
+.log li.error  { background: var(--err-soft);  color: var(--err); }
+.log li.done   { background: var(--ok-soft);   color: var(--ok); }
+.log li.dropped { opacity: 0.6; text-decoration: line-through; }
+
+/* --- debug ----------------------------------------------------------------- */
+
+.panel--fold summary { font-size: 11px; color: var(--text-dim); cursor: pointer; }
+.panel--fold textarea {
+  width: 100%; margin-top: 8px; padding: 6px; font: inherit; resize: vertical;
+  color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+}
+
+.fatal {
+  padding: 10px; border-radius: var(--radius);
+  background: var(--err-soft); color: var(--err); font-size: 12px;
+}

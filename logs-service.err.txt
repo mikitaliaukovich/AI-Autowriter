@@ -1,0 +1,142 @@
+INFO:     Started server process [33236]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on https://127.0.0.1:3000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:56524 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:65121 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:59028 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60327 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:55563 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:61229 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:50182 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:65343 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60011 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:55155 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:51276 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:65269 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:53727 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60284 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:50916 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:56601 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:53623 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:65005 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64635 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:61988 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:62407 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:63603 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:61519 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:54147 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:49459 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:52801 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:59168 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64737 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:49902 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:53584 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:50873 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:63512 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:51288 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:65158 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:50732 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:63601 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:56884 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:59307 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:65478 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:49939 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60111 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:62481 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:49703 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:54417 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:57280 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:53235 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:61206 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:50989 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:56935 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:52232 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:58240 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64703 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:55701 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:58041 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64510 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:54879 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:55258 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:56626 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:57395 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:59465 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:58893 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64475 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:61196 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:54449 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:58739 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60627 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:61203 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:57278 - "WebSocket /ws" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:50711 - "WebSocket /ws" [accepted]
+INFO:     connection open

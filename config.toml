@@ -1,0 +1,80 @@
+# AI Autowriter — local configuration.
+# Everything here can be changed without touching code. Restart the service to apply.
+
+[server]
+host = "127.0.0.1"
+port = 3000
+# Leave empty to auto-discover the office-addin-dev-certs pair in
+# %USERPROFILE%\.office-addin-dev-certs\. Set explicit paths to override.
+ssl_certfile = ""
+ssl_keyfile = ""
+
+[audio]
+# Exact DirectShow device name. Run `python -m service.audio.capture --list` to see options.
+device = "Analogue 1 + 2 (Focusrite USB Audio)"
+sample_rate = 16000
+frame_ms = 32               # 512 samples @ 16 kHz — the frame size Silero VAD expects
+ffmpeg = "ffmpeg"           # path to the binary, if not on PATH
+
+[vad]
+backend = "silero"          # "silero" | "energy"
+threshold = 0.5             # silero speech probability
+silence_ms = 600            # trailing silence that ends an utterance
+min_speech_ms = 400         # ignore blips shorter than this
+max_utterance_ms = 25000    # hard cut, so a long monologue still gets transcribed
+preroll_ms = 300            # audio kept before speech onset, so word starts aren't clipped
+
+[asr]
+backend = "faster-whisper"  # "faster-whisper" | "whisper.cpp"
+# Measured on this machine (int8, 6c/12t, per utterance, dominated by fixed encoder cost
+# because Whisper always encodes a 30-second window whatever the clip length):
+#   small            697 ms    486 MB   weakest Russian
+#   medium          1858 ms   1531 MB   only 24% faster than turbo -- a poor trade
+#   large-v3-turbo  2434 ms   1622 MB   best Russian  <- default
+# Accuracy is worth more than a second in a manuscript, so turbo is the default.
+# Switch to "small" here if the delay bothers you more than the occasional wrong word.
+model = "large-v3-turbo"
+device = "cpu"              # CTranslate2 has no ROCm backend; the GPU is reserved for the LLM
+compute_type = "int8"
+cpu_threads = 10            # beam_size and thread count barely matter: this is encoder-bound
+language = "ru"
+beam_size = 3
+# Seed each transcription with the tail of the document + project vocabulary.
+# This is what keeps character names spelled consistently across a whole book.
+prompt_context_chars = 220
+# Only used when backend = "whisper.cpp"
+server_url = "http://127.0.0.1:8080"
+
+[llm]
+base_url = "http://127.0.0.1:11434"
+model = "qwen3:8b"
+temperature = 0.2
+num_ctx = 8192
+keep_alive = "30m"
+think = false               # qwen3 is a hybrid-reasoning model; thinking triples latency here
+timeout_s = 120
+
+[context]
+before = 6                  # paragraphs of context behind the caret
+after = 2                   # paragraphs of context ahead of the caret
+max_chars = 4000            # hard cap on the window fed to the LLM
+
+[typography]
+dialogue_dash = true        # paragraph-initial "-" becomes an em dash + non-breaking space
+quotes = true               # "..." becomes «...», nested becomes „...“
+ellipsis = true             # "..." becomes "…"
+spacing = true              # collapse double spaces, fix spacing around punctuation
+nbsp_short_words = false    # non-breaking space after one-letter prepositions (в, к, с, и, ...)
+
+[hotkey]
+enabled = true
+# Toggles listening. The first combination Windows grants is used -- global hotkeys are
+# first-come-first-served and Ctrl+Alt+Space is already taken on this machine.
+# Avoid combinations Word itself binds (Ctrl+Alt+M, Ctrl+Alt+D, Ctrl+Shift+Space, ...):
+# a registered global hotkey wins over Word's own shortcut.
+bindings = ["ctrl+alt+g", "ctrl+alt+q", "ctrl+alt+j", "pause"]
+
+[debug]
+# Persist every utterance (audio + transcript + prompt + ops) under logs/ for inspection.
+save_utterances = false
+log_level = "INFO"

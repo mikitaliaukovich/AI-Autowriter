@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Autowriter — pane preview</title>
+  <link rel="stylesheet" href="/taskpane.css" />
+  <style>
+    /* Approximate a docked Word task pane so the layout is checked at real width. */
+    body { background: #d8d8dc; display: flex; justify-content: center; padding: 12px; }
+    @media (prefers-color-scheme: dark) { body { background: #101014; } }
+    #frame {
+      width: 340px; min-height: 620px; background: var(--bg);
+      border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,.15);
+    }
+  </style>
+</head>
+<body>
+  <div id="frame">
+    <div id="boot" class="boot">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>Подключение к Word…</p>
+    </div>
+
+    <main id="app" hidden>
+      <header class="bar">
+        <span class="brand">Стенографист</span>
+        <span id="link" class="pill pill--off" title="Связь с локальной службой">не подключено</span>
+      </header>
+
+      <section class="mic">
+        <button id="toggle" class="mic-button" type="button" aria-pressed="false">
+          <span class="mic-icon" aria-hidden="true"></span>
+          <span id="toggle-label">Начать диктовку</span>
+        </button>
+        <p class="hint"><kbd id="hotkey">—</kbd> работает и когда фокус в документе</p>
+      </section>
+
+      <section class="status" aria-label="Состояние">
+        <div class="status-row"><span>Распознавание</span><b id="s-asr">—</b></div>
+        <div class="status-row"><span>Модель</span><b id="s-llm">—</b></div>
+        <div class="status-row"><span>Микрофон</span><b id="s-mic">—</b></div>
+        <div class="status-row" id="row-timing" hidden><span>Задержка</span><b id="s-timing">—</b></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Окно контекста</h2>
+          <div class="window-size">
+            <label>назад <input id="ctx-before" type="number" min="0" max="20" step="1" /></label>
+            <label>вперёд <input id="ctx-after" type="number" min="0" max="20" step="1" /></label>
+          </div>
+        </div>
+        <p class="panel-note">Ассистент видит только эти абзацы. Поставьте курсор в другое место — окно переедет туда.</p>
+        <div id="context" class="context" aria-live="polite"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Журнал</h2>
+          <button id="undo" class="link-button" type="button">Отменить правку</button>
+        </div>
+        <ul id="log" class="log" aria-live="polite"></ul>
+      </section>
+
+      <details class="panel panel--fold">
+        <summary>Ввод текстом (для проверки без микрофона)</summary>
+        <textarea id="dictate" rows="3" placeholder="Диалог Почему ты это сделал Мэри сказала гневно точка Потому что я тот кто разрушит этот мир"></textarea>
+        <button id="send" class="secondary-button" type="button">Обработать как реплику</button>
+      </details>
+
+      <div id="fatal" class="fatal" hidden></div>
+    </main>
+  </div>
+
+  <script type="module">
+    // Stand up a fake document, then boot the real task pane against it. Everything
+    // below this line is the production code path, including the WebSocket.
+    import { installMockWord } from "./mock-word.js";
+    globalThis.__doc = installMockWord(
+      [
+        { text: "Глава первая", style: "Heading1" },
+        "Мэри стояла у окна и молчала. Дождь шёл с самого утра, и город за стеклом расплывался в серую полосу.",
+        "— Ты уверен? — спросил он, не поднимая глаз.",
+        "",
+      ],
+      { paragraph: 3, offset: 0 },
+    );
+    await import("../src/main.js");
+  </script>
+</body>
+</html>
