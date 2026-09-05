@@ -86,6 +86,22 @@ manuscript.
 when the window was read. If you typed something in the meantime, the whole batch is
 rejected and recomputed against the document as it actually is.
 
+**Fragment edits are resolved before the document is touched.** Because that hash
+guarantees the paragraph is byte-for-byte what the model was shown, a
+`replace_in_paragraph` is applied in Python and sent to Word as a plain paragraph
+replacement. Word's own `search()` never sees it — which matters, because it caps
+patterns at 255 characters and matches literally, so a fragment the model quoted back
+with a hyphen instead of an em dash simply was not found and the batch aborted, losing
+the sentence. Matching here tolerates dash, quote, ё/е, spacing and case substitutions,
+and when a fragment genuinely cannot be placed the model is asked again with the reason
+rather than the words being dropped.
+
+**Pauses do not cost you a sentence.** People stop mid-thought, and the endpointer
+cannot tell that from the end of one. Three things absorb it: a 900 ms silence window,
+a prompt rule that treats a fragment as a continuation of the paragraph rather than a
+new one, and merging any clips still queued into a single utterance so Whisper gets the
+whole phrase.
+
 **Undo is ours, not Word's.** Office.js cannot drive Word's undo stack, so every batch
 records how to reverse itself. Say «отмени последнее» or use the button in the pane.
 
@@ -143,7 +159,7 @@ knowing:
 | `audio.channel` | `mix` / `left` / `right`; see the microphone section above |
 | `audio.gain_db` | applied after channel selection, for a quiet input |
 | `vad.threshold` | lower it if speech is not detected; raise it if noise is |
-| `vad.silence_ms` | how long a pause ends a sentence |
+| `vad.silence_ms` | how long a pause ends a sentence; raise it if thoughts get chopped |
 | `asr.model` | `large-v3-turbo` (default) or `small` for speed |
 | `llm.model` | any Ollama model; `qwen3:8b` by default |
 | `context.before` / `after` | size of the window the model can see and address |

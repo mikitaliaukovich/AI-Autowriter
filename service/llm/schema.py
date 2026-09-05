@@ -38,7 +38,10 @@ OP_NAMES = (
 
 MODES = ("dictation", "command", "mixed", "ignore")
 
-# Word's Range.search() rejects patterns longer than this.
+# Word's Range.search() rejects patterns longer than this. The pipeline no longer uses
+# it -- `pipeline.finalize` resolves fragment edits in Python against the hash-verified
+# paragraph text and emits a whole-paragraph replacement -- but the task pane keeps the
+# limit as a defensive guard on the one code path that still could.
 MAX_SEARCH_LEN = 255
 
 
@@ -210,7 +213,6 @@ def parse_ops(payload: dict[str, Any], known_ids: set[str]) -> OpsBatch:
         raw_ops = []
 
     cleaned: list[dict[str, Any]] = []
-    dropped_oversized = False
 
     for item in raw_ops:
         if not isinstance(item, dict):
@@ -274,11 +276,6 @@ def parse_ops(payload: dict[str, Any], known_ids: set[str]) -> OpsBatch:
             find, repl = item.get("find"), item.get("replace")
             if not isinstance(find, str) or not find.strip() or not isinstance(repl, str):
                 continue
-            if len(find) > MAX_SEARCH_LEN:
-                # Word's search() would reject this. Dropping is safer than truncating,
-                # which would silently replace the wrong span.
-                dropped_oversized = True
-                continue
             op["find"], op["replace"] = find, repl
 
         elif name == "set_style":
@@ -292,6 +289,4 @@ def parse_ops(payload: dict[str, Any], known_ids: set[str]) -> OpsBatch:
         batch = OpsBatch(mode=mode, ops=cleaned, note=note)
     except ValidationError:
         batch = OpsBatch(mode=mode, ops=[], note=note)
-    if dropped_oversized:
-        batch.note = (batch.note + " [dropped oversized find/replace]").strip()
     return batch

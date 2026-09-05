@@ -28,6 +28,7 @@ from service.audio.decode import decode_to_pcm  # noqa: E402
 from service.bridge import WordBridge  # noqa: E402
 from service.console import enable_utf8  # noqa: E402
 from service.pipeline.orchestrator import Orchestrator  # noqa: E402
+from service.protocol import text_hash  # noqa: E402
 from service.textspec import build_context  # noqa: E402
 
 
@@ -62,12 +63,102 @@ class FileStream:
 
 
 class StubPane:
-    """A fake task pane: answers context reads and records applied operations."""
+    """A fake task pane backed by a real in-memory document.
+
+    It must actually apply the edits, not just record them. A stub that always replays
+    the same context cannot catch sequencing bugs — and sequencing is exactly where
+    dictation goes wrong, because each utterance is written against the document the
+    previous one left behind.
+
+    It mirrors the task pane's contract: verify every ``expect`` hash before touching
+    anything, then move the caret to the end of what was written.
+    """
 
     def __init__(self, context_spec: str) -> None:
-        self.context = build_context(context_spec)
+        seed = build_context(context_spec)
+        self.paragraphs: list[dict] = [
+            {"text": p.text, "style": p.style} for p in seed.paragraphs
+        ]
+        anchor = next((i for i, p in enumerate(seed.paragraphs) if p.id == "P0"), 0)
+        self.caret = anchor
         self.applied: list[dict] = []
         self.context_reads = 0
+        self.rejected: list[str] = []
+
+    # --- document ------------------------------------------------------------------
+
+    def window(self, before: int = 6, after: int = 2) -> list[dict]:
+        start = max(0, self.caret - before)
+        end = min(len(self.paragraphs), self.caret + after + 1)
+        out = []
+        for index in range(start, end):
+            offset = index - self.caret
+            paragraph = self.paragraphs[index]
+            entry = {
+                "id": "P0" if offset == 0 else f"P{offset:+d}",
+                "text": paragraph["text"],
+                "style": paragraph["style"],
+                "hash": text_hash(paragraph["text"]),
+                "empty": not paragraph["text"],
+            }
+            if offset == 0:
+                entry["caret"] = len(paragraph["text"])
+            out.append(entry)
+        return out
+
+    def _index_of(self, pid: str) -> int | None:
+        offset = 0 if pid == "P0" else int(pid[1:])
+        index = self.caret + offset
+        return index if 0 <= index < len(self.paragraphs) else None
+
+    def _apply(self, ops: list[dict]) -> dict:
+        # Verify every hash first: the batch applies wholly or not at all.
+        for position, op in enumerate(ops):
+            pid = op.get("id")
+            if not pid:
+                continue
+            index = self._index_of(pid)
+            if index is None:
+                return {"ok": False, "applied": 0, "error": "",
+                        "conflicts": [{"index": position, "id": pid, "reason": "абзац вне окна"}]}
+            if op.get("expect") and text_hash(self.paragraphs[index]["text"]) != op["expect"]:
+                return {"ok": False, "applied": 0, "error": "",
+                        "conflicts": [{"index": position, "id": pid,
+                                       "reason": "абзац изменился после чтения контекста"}]}
+
+        applied = 0
+        for op in ops:
+            name = op["op"]
+            if name in ("noop", "revert"):
+                continue
+            index = self._index_of(op["id"])
+            assert index is not None
+            if name == "append_to_paragraph":
+                self.paragraphs[index]["text"] += op["text"]
+                self.caret = index
+            elif name == "replace_paragraph":
+                self.paragraphs[index]["text"] = op["text"]
+                if op.get("style"):
+                    self.paragraphs[index]["style"] = op["style"]
+                self.caret = index
+            elif name == "insert_paragraphs_after":
+                for offset, new in enumerate(op["paragraphs"], start=1):
+                    self.paragraphs.insert(
+                        index + offset, {"text": new["text"], "style": new.get("style", "normal")}
+                    )
+                self.caret = index + len(op["paragraphs"])
+            elif name == "delete_paragraph":
+                self.paragraphs.pop(index)
+                self.caret = max(0, index - 1)
+            elif name == "set_style":
+                self.paragraphs[index]["style"] = op["style"]
+            else:
+                return {"ok": False, "applied": applied, "conflicts": [],
+                        "error": f"неизвестная операция {name}"}
+            applied += 1
+        return {"ok": True, "applied": applied, "conflicts": [], "error": ""}
+
+    # --- protocol ------------------------------------------------------------------
 
     async def send_json(self, message: dict) -> None:
         kind = message.get("type")
@@ -76,15 +167,21 @@ class StubPane:
             await self._reply({
                 "type": "context",
                 "reqId": message["reqId"],
-                "paragraphs": [p.model_dump() for p in self.context.paragraphs],
-                "atEndOfParagraph": self.context.at_end_of_paragraph,
+                "paragraphs": self.window(),
+                "atEndOfParagraph": True,
             })
         elif kind == "apply":
-            self.applied.extend(message["ops"])
+            result = self._apply(message["ops"])
+            if result["ok"]:
+                self.applied.extend(message["ops"])
+            else:
+                self.rejected.append(
+                    result["error"] or "; ".join(c["reason"] for c in result["conflicts"])
+                )
             await self._reply({
                 "type": "applyResult",
                 "reqId": message["reqId"],
-                "result": {"ok": True, "applied": len(message["ops"]), "conflicts": [], "error": ""},
+                "result": result,
             })
 
     async def close(self) -> None:
@@ -164,6 +261,17 @@ async def main() -> int:
     print(f"operations applied to Word   : {len(pane.applied)}")
     for op in pane.applied:
         print("   " + json.dumps(op, ensure_ascii=False))
+    if pane.rejected:
+        print(f"batches REJECTED             : {len(pane.rejected)}")
+        for reason in pane.rejected:
+            print(f"   {reason}")
+
+    print("\nresulting document:")
+    for index, paragraph in enumerate(pane.paragraphs):
+        marker = ">" if index == pane.caret else " "
+        style = "" if paragraph["style"] == "normal" else f"[{paragraph['style']}] "
+        print(f"  {marker} {style}{paragraph['text'] or '(пусто)'}")
+
     if not pane.applied:
         print("\nNothing reached the document. The log above shows which stage stopped:")
         print("  no 'utterance: N.N s' line  -> the endpointer never closed an utterance (VAD)")

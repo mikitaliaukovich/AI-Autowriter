@@ -117,7 +117,7 @@ async def main() -> int:
         await client.aclose()
 
     batch = parse_ops(completion.payload, context.ids)
-    ops = finalize_ops(batch, context, cfg.typography)
+    ops = finalize_ops(batch, context, cfg.typography).ops
 
     if args.raw:
         print("raw:", completion.raw, "\n")

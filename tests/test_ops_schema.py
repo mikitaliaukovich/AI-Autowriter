@@ -107,17 +107,12 @@ class TestRejection:
 
 
 class TestSearchLimit:
-    def test_oversized_find_is_dropped_not_truncated(self) -> None:
-        # Truncating would silently replace the wrong span of the manuscript.
+    def test_long_fragments_survive_parsing(self) -> None:
+        # Word's 255-character search limit no longer applies: finalisation resolves the
+        # fragment in Python against the hash-verified paragraph text. Dropping it here
+        # would throw away a dictated sentence for no reason.
         payload = {"ops": [{"op": "replace_in_paragraph", "id": "P0",
-                            "find": "я" * (MAX_SEARCH_LEN + 1), "replace": "б"}]}
-        batch = parse_ops(payload, IDS)
-        assert batch.ops == []
-        assert "oversized" in batch.note
-
-    def test_find_at_the_limit_is_kept(self) -> None:
-        payload = {"ops": [{"op": "replace_in_paragraph", "id": "P0",
-                            "find": "я" * MAX_SEARCH_LEN, "replace": "б"}]}
+                            "find": "я" * (MAX_SEARCH_LEN + 50), "replace": "б"}]}
         assert ops_of(payload) == ["replace_in_paragraph"]
 
     def test_blank_find_is_dropped(self) -> None:

@@ -54,7 +54,7 @@ class AudioConfig:
 class VadConfig:
     backend: str = "silero"
     threshold: float = 0.5
-    silence_ms: int = 600
+    silence_ms: int = 900
     min_speech_ms: int = 400
     max_utterance_ms: int = 25000
     preroll_ms: int = 300

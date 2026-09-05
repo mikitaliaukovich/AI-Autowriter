@@ -30,8 +30,8 @@ from service.llm import prompts
 from service.llm.ollama_client import LlmError, OllamaClient
 from service.llm.schema import LLM_RESPONSE_SCHEMA, OpsBatch, parse_ops
 from service.pipeline import commands
-from service.pipeline.finalize import finalize_ops
-from service.protocol import DocumentContext
+from service.pipeline.finalize import Finalized, finalize_ops
+from service.protocol import ApplyResult, DocumentContext
 
 log = logging.getLogger(__name__)
 
@@ -266,6 +266,39 @@ class Orchestrator:
 
     # --- processing -------------------------------------------------------------------
 
+    def _coalesce_audio(self, first: bytes) -> tuple[bytes, int]:
+        """Join any audio already waiting behind this clip into one utterance.
+
+        People pause mid-sentence. The endpointer cannot tell that pause from the end of
+        a thought, so a single sentence often arrives as two clips — and transcribing
+        them separately gives Whisper half a phrase each and asks the model to stitch
+        the halves together in the document, which is where edits went wrong.
+
+        Anything already queued was spoken while we were busy, so it is by definition
+        continuous with this clip. Merging costs nothing (one transcription instead of
+        two) and hands Whisper the complete phrase.
+        """
+        chunks = [first]
+        total = len(first)
+        limit = self.cfg.vad.max_utterance_ms * self.cfg.audio.sample_rate * 2 // 1000
+
+        while total < limit:
+            try:
+                kind, payload = self._queue.get_nowait()
+            except asyncio.QueueEmpty:
+                break
+            if kind != "audio":
+                # Only audio coalesces. Typed input goes back on the queue (at the end,
+                # which is harmless: it only comes from the pane's debug box).
+                self._queue.put_nowait((kind, payload))
+                self._queue.task_done()
+                break
+            chunks.append(payload)
+            total += len(payload)
+            self._queue.task_done()
+
+        return b"".join(chunks), len(chunks)
+
     async def _process_queue(self) -> None:
         while True:
             kind, payload = await self._queue.get()
@@ -273,7 +306,11 @@ class Orchestrator:
             await self._push_state()
             try:
                 if kind == "audio":
-                    await self._handle_audio(payload)
+                    merged, parts = self._coalesce_audio(payload)
+                    if parts > 1:
+                        seconds = len(merged) / 2 / self.cfg.audio.sample_rate
+                        log.info("merged %d queued clips into %.1f s", parts, seconds)
+                    await self._handle_audio(merged)
                 else:
                     await self._handle_text(str(payload))
             except NotConnected:
@@ -353,25 +390,33 @@ class Orchestrator:
             await self._log(f"Не удалось выполнить «{control}»: {result.error}", "warn")
 
     async def _run_llm(self, utterance: str, *, kind: str) -> None:
+        """Turn one utterance into document edits, never giving up silently.
+
+        Dictated words are expensive to lose — the author has already moved on and will
+        not notice a sentence went missing until much later. So both failure modes get a
+        second attempt with the model told exactly what went wrong: a fragment it could
+        not place, or a paragraph that changed underneath it.
+        """
         context = await self.bridge.read_context()
         started = time.perf_counter()
 
-        batch, ops = await self._generate(context, utterance, kind)
-        if not ops:
-            note = batch.note or "нет изменений"
-            await self._log(f"Без правок: {note}")
-            return
+        batch, final = await self._generate(context, utterance, kind)
+        result = None
 
-        result = await self.bridge.apply(ops, meta={"mode": batch.mode, "note": batch.note})
+        if final.ops:
+            result = await self.bridge.apply(
+                final.ops, meta={"mode": batch.mode, "note": batch.note}
+            )
 
-        # A conflict means the paragraph changed after we read it — the user typed
-        # something. Re-read and try once with the document as it actually is now.
-        if not result.ok and result.conflicts:
-            await self._log("Документ изменился, пересчитываю правку…", "warn")
+        correction = self._correction_for(final, result)
+        if correction:
+            await self._log("Не получилось с первого раза, переспрашиваю модель…", "warn")
             context = await self.bridge.read_context()
-            batch, ops = await self._generate(context, utterance, kind)
-            if ops:
-                result = await self.bridge.apply(ops, meta={"mode": batch.mode, "retry": True})
+            batch, final = await self._generate(context, utterance, kind, correction=correction)
+            if final.ops:
+                result = await self.bridge.apply(
+                    final.ops, meta={"mode": batch.mode, "retry": True}
+                )
 
         self._last_timing = {
             **self._last_timing,
@@ -379,29 +424,54 @@ class Orchestrator:
         }
         await self.bridge.try_send(protocol.msg_timing(**self._last_timing))
 
-        if not result.ok:
+        if result is None:
+            detail = "; ".join(final.problems) or batch.note or "нет изменений"
+            await self._log(f"Без правок: {detail}", "warn" if final.problems else "info")
+        elif not result.ok:
             detail = result.error or ", ".join(c.reason for c in result.conflicts)
             await self._log(f"Правка не применена: {detail}", "error")
+            # The words are gone from the document but not from the log, so the author
+            # can at least see what was heard and repeat it.
+            await self._log(f"Не записано: «{utterance[:120]}»", "error")
+
+    def _correction_for(self, final: Finalized, result: ApplyResult | None) -> str:
+        """What to tell the model on a second attempt, or "" if there is nothing to retry."""
+        if final.problems:
+            return (
+                "твоя прошлая попытка не удалась — фрагмент из поля find отсутствует в абзаце "
+                f"({final.problems[0]}). Не используй replace_in_paragraph. "
+                "Верни replace_paragraph с полным новым текстом абзаца или append_to_paragraph."
+            )
+        if result is not None and not result.ok and result.conflicts:
+            return (
+                "документ изменился с момента прошлой попытки. "
+                "Пересчитай правку по текущему окну контекста."
+            )
+        return ""
 
     async def _generate(
-        self, context: DocumentContext, utterance: str, kind: str
-    ) -> tuple[OpsBatch, list[dict[str, Any]]]:
+        self, context: DocumentContext, utterance: str, kind: str, correction: str = ""
+    ) -> tuple[OpsBatch, Finalized]:
         messages = prompts.build_messages(
             context,
             utterance,
             kind=kind,
             project=self.cfg.project,
             max_chars=self.cfg.context.max_chars,
+            correction=correction,
         )
         try:
             completion = await self.llm.complete_json(messages, LLM_RESPONSE_SCHEMA)
         except LlmError as exc:
             await self._log(f"Модель недоступна: {exc}", "error")
-            return OpsBatch(), []
+            return OpsBatch(), Finalized()
 
         batch = parse_ops(completion.payload, context.ids)
-        log.debug("llm %.0f ms, %d ops: %s", completion.latency_ms, len(batch.ops), batch.note)
-        return batch, self._finalize(batch, context)
-
-    def _finalize(self, batch: OpsBatch, context: DocumentContext) -> list[dict[str, Any]]:
-        return finalize_ops(batch, context, self.cfg.typography)
+        final = finalize_ops(batch, context, self.cfg.typography)
+        log.debug(
+            "llm %.0f ms, %d ops, %d problems: %s",
+            completion.latency_ms, len(final.ops), len(final.problems), batch.note,
+        )
+        for problem in final.problems:
+            log.info("unresolved: %s", problem)
+        return batch, final

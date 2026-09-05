@@ -94,6 +94,9 @@ async function runOp(context, op, paragraphs, actions, withStyle) {
       return paragraph;
     }
 
+    // The service resolves fragment edits against the hash-verified paragraph text and
+    // sends a whole-paragraph replacement instead, so this should no longer be reached.
+    // It stays as a defensive fallback, with Word's search limitations intact.
     case "replace_in_paragraph": {
       if (op.find.length > MAX_SEARCH) throw new Conflict(-1, op.id, "фрагмент длиннее 255 символов");
       const found = paragraph.search(escapeForSearch(op.find), { matchCase: true });

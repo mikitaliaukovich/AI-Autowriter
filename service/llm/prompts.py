@@ -48,6 +48,10 @@ SYSTEM = """\
 # Куда писать
 
 - Курсор в конце непустого абзаца, и фраза продолжает ту же мысль → append_to_paragraph P0.
+- ПРОДОЛЖЕНИЕ ПОСЛЕ ПАУЗЫ. Автор часто делает паузу посреди фразы, и реплика приходит \
+как обрывок: без заглавной буквы, начинается с союза или предлога, или абзац P0 \
+обрывается на полуслове. Это ПРОДОЛЖЕНИЕ — используй append_to_paragraph P0. \
+Не переписывай ради этого весь абзац и не начинай новый.
 - Курсор ВНУТРИ абзаца (после ⟦КУРСОР⟧ есть текст) → replace_in_paragraph, \
 либо replace_paragraph с полным новым текстом абзаца.
 - Начинается новая мысль, новая реплика, новый абзац → insert_paragraphs_after P0.
@@ -64,13 +68,17 @@ SYSTEM = """\
 append_to_paragraph    {"op","id","text"}                 дописать в конец абзаца
 insert_paragraphs_after{"op","id","paragraphs":[{"text","style"}]}  вставить абзацы после
 replace_paragraph      {"op","id","text","style"}          заменить абзац целиком
-replace_in_paragraph   {"op","id","find","replace"}        заменить точную подстроку (до 255 симв.)
+replace_in_paragraph   {"op","id","find","replace"}        заменить подстроку абзаца
 delete_paragraph       {"op","id"}                         удалить абзац
 set_style              {"op","id","style"}                 сменить стиль абзаца
 revert                 {"op","count"}                      отменить последние правки
 noop                   {"op","reason"}                     ничего не делать
 
 Стили: normal, heading1, heading2, heading3, quote, intenseQuote, listParagraph.
+
+В replace_in_paragraph поле "find" копируй ПОБУКВЕННО из окна контекста — вместе со \
+знаками препинания, длинными тире «—» и кавычками-ёлочками. Если не уверен, что \
+скопируешь точно, возьми replace_paragraph и верни весь новый текст абзаца.
 
 # Режимы
 
@@ -90,11 +98,13 @@ def _example(context: str, utterance: str, answer: dict[str, Any]) -> list[dict[
     ]
 
 
-def _user_block(context: str, utterance: str, kind: str) -> str:
+def _user_block(context: str, utterance: str, kind: str, correction: str = "") -> str:
     hint = {
         "command": "Это УКАЗАНИЕ ассистенту, а не текст книги. Выполни его.",
         "dictation": "Определи сам, диктовка это или указание.",
     }.get(kind, "Определи сам, диктовка это или указание.")
+    if correction:
+        hint = f"{hint}\n\nВНИМАНИЕ: {correction}"
     return f"ОКНО КОНТЕКСТА:\n{context}\n\nРЕПЛИКА АВТОРА:\n{utterance}\n\n{hint}"
 
 
@@ -206,6 +216,7 @@ def build_messages(
     kind: str = "dictation",
     project: Project | None = None,
     max_chars: int = 4000,
+    correction: str = "",
 ) -> list[dict[str, str]]:
     system = SYSTEM
     if project and (block := project_block(project)):
@@ -214,5 +225,5 @@ def build_messages(
     return [
         {"role": "system", "content": system},
         *FEW_SHOT,
-        {"role": "user", "content": _user_block(context.render(max_chars), utterance, kind)},
+        {"role": "user", "content": _user_block(context.render(max_chars), utterance, kind, correction)},
     ]

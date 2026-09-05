@@ -143,7 +143,7 @@ async def run_case(client: OllamaClient, cfg, fixture: dict) -> Outcome:
     latency_ms = (time.perf_counter() - started) * 1000
 
     batch = parse_ops(completion.payload, context.ids)
-    ops = finalize_ops(batch, context, cfg.typography)
+    ops = finalize_ops(batch, context, cfg.typography).ops
     failures = check(fixture, batch.mode, ops)
     return Outcome(fixture["id"], not failures, latency_ms, failures, ops)
 
