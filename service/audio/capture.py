@@ -11,6 +11,7 @@ and Whisper want.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import re
 import subprocess
@@ -65,6 +66,7 @@ class MicStream:
     def __init__(self, cfg: AudioConfig) -> None:
         self.cfg = cfg
         self._proc: asyncio.subprocess.Process | None = None
+        self._drain: asyncio.Task[None] | None = None
 
     @property
     def running(self) -> bool:
@@ -130,20 +132,56 @@ class MicStream:
             self._proc = None
             raise RuntimeError(f"Microphone '{self.cfg.device}' failed: {hint}. Available: {devices}")
 
+        self._drain = asyncio.create_task(self._drain_stderr(self._proc), name="ffmpeg-stderr")
+
     async def stop(self) -> None:
         proc, self._proc = self._proc, None
+        drain, self._drain = self._drain, None
+        if drain is not None:
+            drain.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await drain
+
         if proc is None or proc.returncode is not None:
             return
-        proc.terminate()
+
+        with contextlib.suppress(ProcessLookupError, OSError):
+            proc.terminate()
         try:
             await asyncio.wait_for(proc.wait(), timeout=3.0)
-        except (asyncio.TimeoutError, ProcessLookupError):
-            with_kill = getattr(proc, "kill", None)
-            if with_kill:
-                try:
-                    proc.kill()
-                except ProcessLookupError:
-                    pass
+            return
+        except (asyncio.TimeoutError, TimeoutError):
+            log.warning("ffmpeg ignored terminate; killing it")
+        except ProcessLookupError:
+            return
+
+        with contextlib.suppress(ProcessLookupError, OSError):
+            proc.kill()
+        # Reap it, otherwise the child lingers holding the microphone open.
+        with contextlib.suppress(asyncio.TimeoutError, TimeoutError, ProcessLookupError):
+            await asyncio.wait_for(proc.wait(), timeout=3.0)
+
+    async def _drain_stderr(self, proc: asyncio.subprocess.Process) -> None:
+        """Keep ffmpeg's stderr pipe empty.
+
+        Nothing reads it during normal operation, and a pipe nobody drains eventually
+        fills — at which point ffmpeg blocks on write and stops producing audio, with no
+        error anywhere to explain it.
+        """
+        if proc.stderr is None:
+            return
+        try:
+            while True:
+                line = await proc.stderr.readline()
+                if not line:
+                    return
+                text = line.decode("utf-8", "replace").strip()
+                if text:
+                    log.warning("ffmpeg: %s", text)
+        except (asyncio.CancelledError, asyncio.IncompleteReadError):
+            raise
+        except Exception:
+            return
 
     async def frames(self) -> AsyncIterator[bytes]:
         """Yield exactly ``frame_bytes`` per iteration until the stream ends."""

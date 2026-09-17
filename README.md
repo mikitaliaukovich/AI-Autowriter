@@ -171,6 +171,10 @@ names drifting in spelling from one paragraph to the next.
 
 ## Tools
 
+```powershell
+.\scripts\stop.ps1                             # stop the service and clean up strays
+```
+
 ```bash
 python scripts/check_audio.py                  # diagnose the microphone path
 python scripts/replay.py clip.wav              # replay a file through the LIVE pipeline
@@ -232,6 +236,21 @@ being applied — usually because you typed. It retries automatically once.
 
 **Only one pane is driven at a time.** If both a real Word pane and a dev preview are
 open, the Word pane wins; the preview still shows status but is never written through.
+
+**Ctrl+C hangs, or the port is "already in use".** Run `scripts\stop.ps1`.
+
+One service is two OS processes: the venv's `python.exe` is a launcher that runs the
+real interpreter as a child. If a run ends badly the interpreter can survive holding the
+port, the global hotkey and an ffmpeg capture process — so the next start fails, the
+hotkey silently moves to a fallback combination, and the microphone stays claimed.
+
+The hang itself is fixed. It came from interpreter teardown rather than the server:
+`asyncio.run` joins its thread pool on exit, a Whisper transcription running there cannot
+be interrupted, and Python waits up to five minutes for it (`THREAD_JOIN_TIMEOUT`). Since
+Ctrl+C during dictation is exactly when a transcription is in flight, the terminal sat on
+"Shutting down". The service now releases everything it owns — pane sockets, ffmpeg, the
+hotkey — and then exits immediately rather than waiting on a thread with nothing left to
+save. Ctrl+Break works too, and a second one forces the exit.
 
 ## Layout
 

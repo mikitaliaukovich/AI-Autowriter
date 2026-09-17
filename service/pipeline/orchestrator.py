@@ -50,6 +50,23 @@ def _to_dbfs(rms: float) -> float:
     return 20 * math.log10(rms) if rms > SILENT_RMS else -100.0
 
 
+async def _await_cancelled(task: asyncio.Task[Any]) -> None:
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
+
+
+async def _guarded(what: str, coro: Any, *, timeout: float) -> None:
+    """Await one shutdown step, giving up loudly rather than hanging the process."""
+    try:
+        await asyncio.wait_for(asyncio.shield(asyncio.ensure_future(coro)), timeout)
+    except (asyncio.TimeoutError, TimeoutError):
+        log.warning("shutdown: %s did not finish within %.0fs; continuing", what, timeout)
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        log.warning("shutdown: %s failed (%s); continuing", what, exc)
+
+
 class Orchestrator:
     def __init__(self, cfg: Config, bridge: WordBridge) -> None:
         self.cfg = cfg
@@ -66,6 +83,7 @@ class Orchestrator:
         self._hotkey: HotkeyListener | None = None
         self._hotkey_label = ""
         self._loop: asyncio.AbstractEventLoop | None = None
+        self._warmup_task: asyncio.Task[None] | None = None
         self._llm_status = "starting"
         self._last_timing: dict[str, float] = {}
         self._busy = False
@@ -79,19 +97,36 @@ class Orchestrator:
         self._loop = asyncio.get_running_loop()
         self._worker = asyncio.create_task(self._process_queue(), name="pipeline")
         self._start_hotkey()
-        asyncio.create_task(self._warm_models(), name="warmup")
+        # Tracked, not fire-and-forget: warming loads the Whisper model in a worker
+        # thread, and an untracked task carries on doing that after shutdown — which
+        # left the interpreter waiting on it, and orphaned processes behind.
+        self._warmup_task = asyncio.create_task(self._warm_models(), name="warmup")
 
     async def aclose(self) -> None:
-        await self.set_listening(False)
+        """Release everything, and never block shutdown on any one step.
+
+        Each stage is individually guarded: a microphone that will not die, a hotkey
+        thread that misses its quit message, or a model still loading must not be able
+        to hold the whole process open.
+        """
+        await _guarded("stop listening", self.set_listening(False), timeout=5.0)
+
+        for name, task in (("warmup", self._warmup_task),
+                           ("pipeline", self._worker),
+                           ("audio", self._audio_task)):
+            if task is None or task.done():
+                continue
+            task.cancel()
+            # A cancelled task awaiting `asyncio.to_thread` only unwinds once the thread
+            # returns, so this is bounded rather than awaited indefinitely.
+            await _guarded(f"stop {name}", _await_cancelled(task), timeout=5.0)
+
         if self._hotkey:
-            self._hotkey.stop()
-        for task in (self._worker, self._audio_task):
-            if task:
-                task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await task
-        await self.llm.aclose()
-        await self.asr.aclose()
+            await asyncio.to_thread(self._hotkey.stop)
+
+        await _guarded("close LLM client", self.llm.aclose(), timeout=3.0)
+        await _guarded("close ASR", self.asr.aclose(), timeout=3.0)
+        log.info("pipeline shut down")
 
     def _start_hotkey(self) -> None:
         if not self.cfg.hotkey.enabled:
